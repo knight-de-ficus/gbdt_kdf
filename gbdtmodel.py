@@ -1,16 +1,44 @@
-from datetime import datetime
-import abc
-from random import sample
-from math import exp, log
-from gbdt.tree import construct_decision_tree
-import time
-import pandas as pd
-import numpy as np
+import lightgbm as lgb
+from sklearn.preprocessing import LabelEncoder
 from sklearn.tree import DecisionTreeRegressor
-
-
+from sklearn.utils.class_weight import compute_sample_weight
+import numpy as np
+import pandas as pd
+import time
 
 class GBDTMultiClassifier:
+    def __init__(self, n_estimators=100, learning_rate=0.1, max_depth=3, task='multiclass'):
+        self.params = None
+        self.n_estimators = n_estimators
+        self.learning_rate = learning_rate
+        self.max_depth = max_depth
+        self.task = task
+        
+    def train(self,X, y, class_weight=None):
+        le = LabelEncoder()
+        Y_encode = le.fit_transform(y)
+        if hasattr(le, 'inverse_transform'):
+            class_w_num = {le.transform([k])[0]: v for k, v in class_weight.items() if k in le.classes_}
+        else:
+            class_w_num = class_weight
+        sample_w = compute_sample_weight(class_weight=class_w_num, y=Y_encode)
+        dtrain = lgb.Dataset(X, label=Y_encode, weight=sample_w)
+
+        self.params = {
+            'objective': 'multiclass' if self.task == 'multiclass' else 'binary',
+            'num_class': len(np.unique(y)),
+            'metric': 'multi_logloss' if self.task == 'multiclass' else 'binary_logloss',
+            'learning_rate': self.learning_rate,
+            'verbose': -1
+        }
+        self.model = lgb.train(self.params, dtrain, num_boost_round=self.n_estimators)
+        return self.model
+    
+    def predict(self, X):
+        Y_pred_prob = self.model.predict(X)
+        return np.argmax(Y_pred_prob, axis=1)
+    
+class GDBTMultiClassifier:
     def __init__(self, n_estimators=100, learning_rate=0.1, max_depth=3, task='multiclass'):
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
@@ -72,7 +100,7 @@ class GBDTMultiClassifier:
             self.trees.append(trees_for_iteration)
 
             iteration_elapsed_time = time.time() - iteration_start_time
-            print(f"Tree {estimator_idx + 1},residual: {np.mean(avg_residuals):.6f},time: {iteration_elapsed_time:.2f} seconds.")
+            # print(f"Tree {estimator_idx + 1},residual: {np.mean(avg_residuals):.6f},time: {iteration_elapsed_time:.2f} seconds.")
             tree_time_records.append({"tree_index": estimator_idx + 1, "train_time": iteration_elapsed_time})
 
         return pd.DataFrame(tree_time_records)

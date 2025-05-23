@@ -1,72 +1,157 @@
 import pandas as pd
-import joblib
-from sklearn.metrics import accuracy_score
-
-from preprocess import preprocess_data
-from gbdt.data import DataSet
-from gbdt.model import GBDT
-from gbdt.gbdt_model import GBDTMultiClassifier
+# from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+# from gbdt.gbdt_model import GBDTMultiClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+import draw
 import feature_select as fs
 
+# from sklearn.utils.class_weight import compute_sample_weight
+# from sklearn.preprocessing import LabelEncoder
+# import matplotlib.pyplot as plt
+# import numpy as np
+# import lightgbm as lgb
+import gbdtmodel as lgb
+import time
+
+
+
 def main():
+    train_path = './data_3/kddtrain_huffman.csv'
+    test_path = './data_3/kddtest_huffman.csv'
+
+    # train_path = './data_3/kddtrain_onehot.csv'
+    # test_path = './data_3/kddtest_onehot.csv'
+
+    # train_path = './data_3/unswtrain_2f.csv'
+    # test_path = './data_3/unswtest_2f.csv'
+
+    # train_path = './unswtrain_onehot_label.csv'
+    # test_path = './unswtest_onehot_label.csv'
     
-    training_file_path = "./data_3/kddtrain_f.csv"
-    test_file_path = "./data_3/kddtest_f.csv"
+    train_df = pd.read_csv(train_path)
+    test_df = pd.read_csv(test_path)
 
-    # training_file_path = "./data_3/kddtrain_onehot.csv"
-    # test_file_path = "./data_3/kddtest_onehot.csv"
+    train_df = fs.oversample_data(train_df)
+    print("Oversampling done.")
+    print("train_df shape:", train_df.shape)
+    print("标签分布:")
+    print(train_df.iloc[:, -1].value_counts())
     
-    # training_file_path = "./data_3/unswtrain_1f.csv"
-    # test_file_path = "./data_3/unswtest_1f.csv"
+    train_df, test_df = fs.chi2_select_features(train_df, test_df, keep_ratio=0.8, save_path="selected_features_gbdt.png")
 
+    X_train = train_df.iloc[:, 1:-1]
+    y_train = train_df.iloc[:, -1]
+    X_test = test_df.iloc[:, 1:-1]
+    y_test = test_df.iloc[:, -1]
+
+#前向选择
+    # start_time = time.time()
+    
+    # max_features = int(X_train.shape[1] * 0.5)
+    # best_features = fs.forward_feature_selection(X_train, y_train, X_test, y_test, max_features=max_features, step=5)
+    # print('前向选择最佳特征:', best_features)
+
+    # end_time = time.time()
+    # print(f"特征选择与评估耗时: {end_time - start_time:.2f} 秒")
+
+#nsl-kdd
+    best_features = ['28', '33', '32', '27', '38', '103', '4', '102', '31', '20', '29', '21', '15', '22', '30', '11', '14', '201', '200', '9']
+
+#unsw-nb15
+    # best_features = ['3', '23', '4', '8', '24', '1', '20', '2', '52', '14', '6', '41', '29', '44', '31', '30', '46', '47', '39', '16', '53', '25', '35', '26', '17', '42', '43', '45', '21', '28', '40', '15', '48', '36', '12', '64', '7', '11', '13', '18']
+
+    # le = LabelEncoder()
+    # Y_encode = le.fit_transform(y_train)
+    # # class_w = {
+    # #     'normal': 0.1,
+    # #     'dos': 0.6,
+    # #     'probe': 0.6,
+    # #     'r2l': 2,
+    # #     'u2r': 1.2
+    # # }
+
+    # class_w = {
+    #     '1': 0.1,
+    #     '0': 0.6,
+    #     '2': 0.6,
+    #     '3': 2,
+    #     '4': 1.2
+    # }
+    
+    # # class_w = {
+    # #     '1': 1,
+    # #     '0': 1,
+    # #     '2': 1,
+    # #     '3': 1,
+    # #     '4': 1
+    # # }
+
+    # # class_w = {
+    # #     '0': 0.1,
+    # #     '1': 1.2,
+    # #     '2': 1.2,
+    # #     '3': 0.8,
+    # #     '4': 1.2,
+    # #     '5': 1,
+    # #     '6': 0.8,
+    # #     '7': 1,
+    # #     '8': 1.2,
+    # #     '9': 0.8
+    # # }
+
+    # if hasattr(le, 'inverse_transform'):
+    #     class_w_num = {le.transform([k])[0]: v for k, v in class_w.items() if k in le.classes_}
+    # else:
+    #     class_w_num = class_w
+    # sample_w = compute_sample_weight(class_weight=class_w_num, y=Y_encode)
+    # dtrain = lgb.Dataset(X_train[best_features].values, label=Y_encode, weight=sample_w)
+    # params = {
+    #     'objective': 'multiclass',
+    #     'num_class': len(np.unique(Y_encode)),
+    #     'metric': 'multi_logloss',
+    #     'learning_rate': 0.1,
+    #     'verbose': -1
+    # }
+    # train_start_time = time.time()
+    # lgb_model = lgb.train(params, dtrain, num_boost_round=100)
+    # train_end_time = time.time()
+    # print(f"训练耗时: {train_end_time - train_start_time:.2f} 秒")
+
+    # Y_pred_prob = lgb_model.predict(X_test[best_features].values)
+
+    # y_pred = np.argmax(Y_pred_prob, axis=1)
+    # y_pred_lgb = le.inverse_transform(y_pred)
+    # print('classification_report:')
+    # print(classification_report(y_test, y_pred_lgb))
+    # cm_lgb = confusion_matrix(y_test, y_pred_lgb, labels=sorted(list(set(y_test))))
+    # print(cm_lgb)
+
+    class_w = {
+        '1': 0.1,
+        '0': 0.6,
+        '2': 0.6,
+        '3': 2,
+        '4': 2
+    }
+
+    # gbdt_model = GBDTMultiClassifier(n_estimators=100, learning_rate=0.1, max_depth=3,task='multiclass')
+    # sample_w = fs.compute_sample_weight(class_weight=class_w, y=y_train)
+    # gbdt_model.fit(X_train[best_features].values, y_train.values, sample_weight=sample_w)
+    # test_predictions = gbdt_model.predict(X_test[best_features].values)
+
+    gbdt_model = lgb.GBDTMultiClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, task='multiclass')
+    gbdt_model.train(X_train[best_features].values, y_train.values, class_weight=class_w)
+    test_predictions = gbdt_model.predict(X_test[best_features].values)
+
+    print(classification_report(y_test, test_predictions))
 
     
-    training_data = pd.read_csv(test_file_path)
-    test_data = pd.read_csv(training_file_path)
-
-    training_data, test_data = fs.select_features(training_data, test_data,keep_ratio=0.8)
-
-    training_labels = training_data.iloc[:, -1]
-    training_features = training_data.iloc[:, 1:-1]
-    test_labels = test_data.iloc[:, -1]
-    test_features = test_data.iloc[:, 1:-1]
-
-    # label_mapping = {'dos': 0, 'normal': 1, 'probe': 2, 'r2l': 3, 'u2r': 4}
-
-    # 使用自定义的GBDT多分类模型
-    # gbdt_model = GBDTMultiClassifier(n_estimators=100, learning_rate=0.05, max_depth=3, task='binary')
-    gbdt_model = GBDTMultiClassifier(n_estimators=100, learning_rate=0.1, max_depth=3,task='multiclass')
-
-    print("GBDTMultiClassifier initialized.")
-
-    # 训练模型
-    fit_time_df = gbdt_model.fit(training_features.values, training_labels.values)
-    print("GBDTMultiClassifier training completed.")
-
-    # 保存每棵树训练时间到文件
-    fit_time_df.to_csv("./gbdt_train_time.csv", index=False)
-    print("Tree training time saved to './gbdt_train_time.csv'")
-
-    # 保存模型到文件
-    # joblib.dump(gbdt_model, "./gbdt_model_500.pkl")
-    # print("Trained GBDTMultiClassifier model saved.")
-
-    # 测试模型
-    test_predictions = gbdt_model.predict(test_features.values)
-
-    # 计算准确率
-    accuracy = accuracy_score(test_labels, test_predictions)
-    print(f"GBDTMultiClassifier Model Accuracy: {accuracy:.4f}")
-
-    # 保存结果到CSV文件
     result_df = pd.DataFrame({
-        "True Label": test_labels,
+        "True Label": y_test,
         "Predicted Label": test_predictions,
-        "Match": (test_labels == test_predictions).astype(int)
+        "Match": (y_test == test_predictions).astype(int)
     })
     result_df.to_csv("./result.csv", index=False)
-    print("Results saved to './result.csv'")
-
 
 if __name__ == "__main__":
     main()

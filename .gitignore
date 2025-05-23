@@ -28,6 +28,8 @@ MANIFEST
 
 data_2/
 data_3/
+data_4/
+*.png
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
