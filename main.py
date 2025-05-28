@@ -1,21 +1,16 @@
 import pandas as pd
-# from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-# from gbdt.gbdt_model import GBDTMultiClassifier
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report
 import draw
-import feature_select as fs
 
-# from sklearn.utils.class_weight import compute_sample_weight
-# from sklearn.preprocessing import LabelEncoder
-# import matplotlib.pyplot as plt
-# import numpy as np
-# import lightgbm as lgb
-import gbdtmodel as lgb
+import gbdt.LightGBM as lgb
+
+import gbdt.feature_select as fs
+from gbdt.gbdt_model import GBDTMultiClassifier
 import time
 
-
-
 def main():
+
+#预处理文件后在这里调用
     train_path = './data_3/kddtrain_huffman.csv'
     test_path = './data_3/kddtest_huffman.csv'
 
@@ -31,12 +26,14 @@ def main():
     train_df = pd.read_csv(train_path)
     test_df = pd.read_csv(test_path)
 
+# 重采样
     train_df = fs.oversample_data(train_df)
     print("Oversampling done.")
     print("train_df shape:", train_df.shape)
-    print("标签分布:")
+    print("分布:")
     print(train_df.iloc[:, -1].value_counts())
     
+# 卡方检验
     train_df, test_df = fs.chi2_select_features(train_df, test_df, keep_ratio=0.8, save_path="selected_features_gbdt.png")
 
     X_train = train_df.iloc[:, 1:-1]
@@ -49,10 +46,10 @@ def main():
     
     # max_features = int(X_train.shape[1] * 0.5)
     # best_features = fs.forward_feature_selection(X_train, y_train, X_test, y_test, max_features=max_features, step=5)
-    # print('前向选择最佳特征:', best_features)
+    # print('best features:', best_features)
 
     # end_time = time.time()
-    # print(f"特征选择与评估耗时: {end_time - start_time:.2f} 秒")
+    # print(f"feature-select time: {end_time - start_time:.2f} ")
 
 #nsl-kdd
     best_features = ['28', '33', '32', '27', '38', '103', '4', '102', '31', '20', '29', '21', '15', '22', '30', '11', '14', '201', '200', '9']
@@ -60,23 +57,13 @@ def main():
 #unsw-nb15
     # best_features = ['3', '23', '4', '8', '24', '1', '20', '2', '52', '14', '6', '41', '29', '44', '31', '30', '46', '47', '39', '16', '53', '25', '35', '26', '17', '42', '43', '45', '21', '28', '40', '15', '48', '36', '12', '64', '7', '11', '13', '18']
 
-    # le = LabelEncoder()
-    # Y_encode = le.fit_transform(y_train)
-    # # class_w = {
-    # #     'normal': 0.1,
-    # #     'dos': 0.6,
-    # #     'probe': 0.6,
-    # #     'r2l': 2,
-    # #     'u2r': 1.2
-    # # }
-
-    # class_w = {
-    #     '1': 0.1,
-    #     '0': 0.6,
-    #     '2': 0.6,
-    #     '3': 2,
-    #     '4': 1.2
-    # }
+    class_w = {
+        '1': 0.1,
+        '0': 0.6,
+        '2': 0.6,
+        '3': 2,
+        '4': 1.2
+    }
     
     # # class_w = {
     # #     '1': 1,
@@ -99,51 +86,20 @@ def main():
     # #     '9': 0.8
     # # }
 
-    # if hasattr(le, 'inverse_transform'):
-    #     class_w_num = {le.transform([k])[0]: v for k, v in class_w.items() if k in le.classes_}
-    # else:
-    #     class_w_num = class_w
-    # sample_w = compute_sample_weight(class_weight=class_w_num, y=Y_encode)
-    # dtrain = lgb.Dataset(X_train[best_features].values, label=Y_encode, weight=sample_w)
-    # params = {
-    #     'objective': 'multiclass',
-    #     'num_class': len(np.unique(Y_encode)),
-    #     'metric': 'multi_logloss',
-    #     'learning_rate': 0.1,
-    #     'verbose': -1
-    # }
-    # train_start_time = time.time()
-    # lgb_model = lgb.train(params, dtrain, num_boost_round=100)
-    # train_end_time = time.time()
-    # print(f"训练耗时: {train_end_time - train_start_time:.2f} 秒")
-
-    # Y_pred_prob = lgb_model.predict(X_test[best_features].values)
-
-    # y_pred = np.argmax(Y_pred_prob, axis=1)
-    # y_pred_lgb = le.inverse_transform(y_pred)
-    # print('classification_report:')
-    # print(classification_report(y_test, y_pred_lgb))
-    # cm_lgb = confusion_matrix(y_test, y_pred_lgb, labels=sorted(list(set(y_test))))
-    # print(cm_lgb)
-
-    class_w = {
-        '1': 0.1,
-        '0': 0.6,
-        '2': 0.6,
-        '3': 2,
-        '4': 2
-    }
-
-    # gbdt_model = GBDTMultiClassifier(n_estimators=100, learning_rate=0.1, max_depth=3,task='multiclass')
-    # sample_w = fs.compute_sample_weight(class_weight=class_w, y=y_train)
-    # gbdt_model.fit(X_train[best_features].values, y_train.values, sample_weight=sample_w)
-    # test_predictions = gbdt_model.predict(X_test[best_features].values)
-
-    gbdt_model = lgb.GBDTMultiClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, task='multiclass')
-    gbdt_model.train(X_train[best_features].values, y_train.values, class_weight=class_w)
+#自定义的GBDT
+    gbdt_model = GBDTMultiClassifier(n_estimators=100, learning_rate=0.1, max_depth=3,task='multiclass')
+    sample_w = fs.compute_sample_weight(class_weight=class_w, y=y_train)
+    gbdt_model.fit(X_train[best_features].values, y_train.values, sample_weight=sample_w)
     test_predictions = gbdt_model.predict(X_test[best_features].values)
 
     print(classification_report(y_test, test_predictions))
+
+# LightGBM
+    # gbdt_model = lgb.GBDTMultiClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, task='multiclass')
+    # gbdt_model.train(X_train[best_features].values, y_train.values, class_weight=class_w)
+    # test_predictions = gbdt_model.predict(X_test[best_features].values)
+
+    # print(classification_report(y_test, test_predictions))
 
     
     result_df = pd.DataFrame({

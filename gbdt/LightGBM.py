@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import time
 
+
 class GBDTMultiClassifier:
     def __init__(self, n_estimators=100, learning_rate=0.1, max_depth=3, task='multiclass'):
         self.params = None
@@ -38,6 +39,7 @@ class GBDTMultiClassifier:
         Y_pred_prob = self.model.predict(X)
         return np.argmax(Y_pred_prob, axis=1)
     
+#这里是原本我实现的梯度提升树
 class GDBTMultiClassifier:
     def __init__(self, n_estimators=100, learning_rate=0.1, max_depth=3, task='multiclass'):
         self.n_estimators = n_estimators

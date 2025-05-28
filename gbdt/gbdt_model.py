@@ -72,7 +72,7 @@ class GBDTMultiClassifier:
             self.trees.append(trees_for_iteration)
 
             iteration_elapsed_time = time.time() - iteration_start_time
-            print(f"Tree {estimator_idx + 1},residual: {np.mean(avg_residuals):.6f},time: {iteration_elapsed_time:.2f} seconds.")
+            # print(f"Tree {estimator_idx + 1},residual: {np.mean(avg_residuals):.6f},time: {iteration_elapsed_time:.2f} seconds.")
             tree_time_records.append({"tree_index": estimator_idx + 1, "train_time": iteration_elapsed_time})
 
         return pd.DataFrame(tree_time_records)
